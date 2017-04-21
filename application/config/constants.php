@@ -83,3 +83,18 @@ defined('EXIT_USER_INPUT')     OR define('EXIT_USER_INPUT', 7); // invalid user 
 defined('EXIT_DATABASE')       OR define('EXIT_DATABASE', 8); // database error
 defined('EXIT__AUTO_MIN')      OR define('EXIT__AUTO_MIN', 9); // lowest automatically-assigned error code
 defined('EXIT__AUTO_MAX')      OR define('EXIT__AUTO_MAX', 125); // highest automatically-assigned error code
+defined('TRANSACTION_TYPE_CREDIT')      OR define('TRANSACTION_TYPE_CREDIT', 'CREDIT');
+defined('TRANSACTION_TYPE_DEBIT')      OR define('TRANSACTION_TYPE_DEBIT', 'DEBIT');
+defined('TRANSACTION_TYPE_LOAN')      OR define('TRANSACTION_TYPE_LOAN', 'LOAN PAYMENT');
+defined('TRANSACTION_MODE_CASH')      OR define('TRANSACTION_MODE_CASH', 'CASH');
+defined('TRANSACTION_MODE_TRANSFER')      OR define('TRANSACTION_MODE_TRANSFER', 'TRANSFER');
+defined('CREDIT')      OR define('CREDIT', 'CREDIT');
+defined('DEBIT')      OR define('DEBIT', 'DEBIT');
+defined('ADD_SHARE')      OR define('ADD_SHARE', 'ADD');
+defined('REMOVE_SHARE')      OR define('REMOVE_SHARE', 'ADD');
+defined('TRANSFER_SHARE')      OR define('TRANSFER_SHARE', 'TRANSFER');
+defined('SAVING_SHORT_CODE')      OR define('SAVING_SHORT_CODE', 'saving');
+defined('CURRENT_SHORT_CODE')      OR define('CURRENT_SHORT_CODE', 'current');
+defined('LOAN_SHORT_CODE')      OR define('LOAN_SHORT_CODE', 'saving');
+defined('FD_SHORT_CODE')      OR define('FD_SHORT_CODE', 'fd');
+defined('FD_WITHDRAW')      OR define('FD_WITHDRAW', 'Fixed deposit withdraw');

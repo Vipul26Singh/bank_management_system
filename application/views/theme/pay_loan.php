@@ -3,7 +3,7 @@
 <div class="main-content">
 <div class="row">
 <div class="inner-contatier">    
-<div class="col-md-12 col-lg-12 col-sm-12 content-title"><h4><?php get_phrase('heading_income') ?></h4></div>
+<div class="col-md-12 col-lg-12 col-sm-12 content-title"><h4><?php get_phrase('transaction') ?></h4></div>
 
 <!--Alert-->
 <div class="system-alert-box">

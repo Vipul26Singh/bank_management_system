@@ -204,7 +204,6 @@ class AdminModel extends CI_Model{
 			}
 		}
 		else if($action=='other'){
-			//get last balance
 			$query=$this->db->query("SELECT total_loan_amount_with_interest FROM bank_loan
 					WHERE member_id='".$member_id."' AND user_id=".$this->session->userdata('user_id'));
 			$result=$query->row();
@@ -245,17 +244,6 @@ class AdminModel extends CI_Model{
 						$this->db->update('bank_emi',$data5);
 						$result =1;
                        
-               //          $this->db->select('account_balance');
-               //          $this->db->from('bank_accounts');
-               //          $this->db->where('member_id',$account);
-               //          $query = $this->db->get();
-			            // $result1=$query->row();
-			            // print_r($data['extra_amount']);die;
-               //              $data4['account_balance'] = $result1->account_balance + $data['extra_amount']; 
-               //              $this->db->where('member_id',$account);
-               //              $this->db->update('bank_accounts',$data4);
-               //              return true;
-                        
                     }
 		}
                 else if($action=='service'){
@@ -430,7 +418,8 @@ class AdminModel extends CI_Model{
                 else{
                     return 0;
                     
-                }}
+                }
+		}
 	}
 
 
@@ -633,6 +622,66 @@ class AdminModel extends CI_Model{
 		$result=$query_result->result_array();
 		return $result;
 	} 
+
+	public function get_general_detail($module_id = '', $name = ''){
+		$this->db->select('*');
+		$this->db->from('general_detail');
+
+		if(!empty($module_id)){
+			$this->db->where('module_id', $module_id);
+		}
+
+		if(!empty($name)){
+			$this->db->where('name', $name);
+		}
+
+		$query = $this->db->get();
+		$val = $query->result_array();
+
+		// If name is not empty then send single value
+		if(!empty($name)){
+			$val = $val[0]['value'];
+		}
+
+		return $val;
+	}
+
+	public function get_sequence($sequence_id){
+		$this->db->select('*');
+		$this->db->from('sequence');
+		$this->db->where('sequence_id', $sequence_id);
+
+		$query = $this->db->get();
+		$val = $query->result_array();
+		$val = $val[0]['value'];
+
+
+		$this->db->set('value', 'value+1', FALSE);
+		$this->db->where('sequence_id', $sequence_id);
+		$this->db->update('sequence');
+		
+		return $val;
+	}
+
+
+	public function get_interest_detail($mod_id=null, $identifier=null){
+                $this->db->select('interest_management.id as id, interest_management.name as name, interest_management.interest as interest, interest_management.description as description, bank_account_types.account_name as account_name, bank_account_types.status as status, bank_account_types.html_id as html_id');
+                $this->db->from('interest_management');
+		$this->db->join('bank_account_types', 'bank_account_types.tbl_id=interest_management.account_type_id');
+		
+		if(!empty($mod_id)){
+			$this->db->where('account_type_id', $mod_id);
+		}
+
+		if(!empty($identifier)){
+                        $this->db->where('identifier_note', $identifier);
+                }
+		
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+                return $result;
+        }
+
 	public function get_loan_setup(){
 		$this->db->select('*');
 		$this->db->from('loan_setup');   
@@ -640,10 +689,9 @@ class AdminModel extends CI_Model{
 		$result=$query_result->result();
 		return $result;
 	} 
-	public function getAllAccountDetails($mobile='', $name=''){
+	public function getAllAccountDetails($mobile='', $name='', $status=1){
 		$this->db->select('*');
 		$this->db->from('member_details');  
-		$this->db->where('status', 1);
 
 		if(!empty($name)){
                         $this->db->like('member_name', $name);
@@ -652,6 +700,8 @@ class AdminModel extends CI_Model{
                 if(!empty($mobile)){
                         $this->db->like('mobile_no', $mobile);
                 }
+
+		$this->db->where('status', $status);	
 
 		$query_result=$this->db->get();
 		$result=$query_result->result();
@@ -670,6 +720,7 @@ class AdminModel extends CI_Model{
 		$result = $query->row();
 		return $result;
 	} 
+
 	public function getAllAccountCurrentSaving(){
 		$this->db->select('*');
 		$this->db->from('bank_accounts');
@@ -716,7 +767,7 @@ class AdminModel extends CI_Model{
 
 			}
 
-	}
+	} 
 	public function get_account_types(){
 		$this->db->select('*');
 		$this->db->from('bank_account_types');  
@@ -912,6 +963,498 @@ public function get_current_emi($customer_id,$loan_id=''){
                 $query_result=$this->db->get();
 		$result=$query_result->row();
 		return $result->count_val;
-		return 1;
 	}
+
+
+	public function fetch_account_detail($account_number=null, $account_type_id=null, $status=null){
+		$this->db->select('*');
+                $this->db->from('bank_accounts');
+
+		if(!empty($account_number)){
+			$this->db->where('bank_account_number', $account_number);
+		}
+
+		if(!empty($account_type_id)){
+			$this->db->where('bank_account_id', $account_type_id);
+		}
+
+		if(!empty($status)){
+                        $this->db->where('status', $status);
+                }
+	
+
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+
+		if(!empty($result))
+                	return $result[0];
+		return null;
+	}
+
+	public function fetch_account_view_detail($account_number=null, $account_type_id=null, $status=null, $member_id=null){
+                $this->db->select('*');
+                $this->db->from('bank_accounts');
+
+                if(!empty($account_number)){
+                        $this->db->where('bank_accounts.bank_account_number', $account_number);
+                }
+
+                if(!empty($account_type_id)){
+                        $this->db->where('bank_accounts.bank_account_id', $account_type_id);
+                }
+
+                if(!empty($status) || $status == '0'){
+                        $this->db->where('bank_accounts.status', $status);
+                }
+
+		$this->db->join('bank_account_types', 'bank_account_types.tbl_id = bank_accounts.bank_account_id');
+		$this->db->join('bank_member_account', 'bank_member_account.account_id = bank_accounts.id');
+		$this->db->join('member_details', 'bank_member_account.member_id = member_details.member_id');
+		$this->db->order_by("bank_accounts.bank_account_number", "asc");
+
+		if($member_id !=null){
+                        $this->db->where('member_details.member_id', $member_id);
+                }
+
+
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+
+                if(!empty($result))
+                        return $result;
+                return null;
+        }
+
+	public function fetch_member_detail($member_id = null, $status=null){
+                $this->db->select('*');
+                $this->db->from('member_details');
+
+		if(!empty($member_id)){
+                	$this->db->where('member_id', $member_id);
+		}
+
+                if(!empty($status)){
+                        $this->db->where('status', $status);
+                }
+
+
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+
+                if(!empty($result))
+                        return $result;
+                return null;
+        }
+
+	public function fetch_account_type_id($account_type){
+                $this->db->select('tbl_id');
+                $this->db->from('bank_account_types');
+                $this->db->where('html_id', $account_type);
+
+                $query_result=$this->db->get();
+                $result=$query_result->row();
+		if(empty($result)){
+			return null;
+		}
+                return $result->tbl_id;
+        }
+
+	public function fetch_account_type_detail($account_id=null, $account_type=null){
+                $this->db->select('*');
+                $this->db->from('bank_account_types');
+		
+		if(!empty($account_type)){
+                	$this->db->where('html_id', $account_type);
+		}
+
+		if(!empty($account_id)){
+			$this->db->where('tbl_id', $account_id);
+		}
+
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+                if(empty($result)){
+                        return null;
+                }
+                return $result;
+        }
+
+	
+
+	public function is_linked_account($member_id, $account_number, $account_type=null){
+		$account_type_id = null;
+
+		if(!empty($account_type)){
+			$account_type_id = $this->fetch_account_type_id($account_type);
+			if(empty($account_type_id)){
+                        	return false;
+                	}
+		}
+
+
+		$account_detail = $this->fetch_account_detail($account_number, $account_type_id);
+		
+		if(!empty($account_detail)){
+			$this->db->select('count(*) as count_val');
+			$this->db->from('bank_member_account');
+			$this->db->where('member_id', $member_id);
+			$this->db->where('account_id', $account_detail['id']);
+
+			$query_result=$this->db->get();
+			$result=$query_result->row();
+
+			if($result->count_val>0){
+				return true;
+			}	
+		}
+
+		return false;
+        }
+
+	public function get_account_member_detail($accnt_no = null, $status = null, $account_type_id = null, $account_type_short_code = null){
+		$this->db->select('*');
+		$this->db->from('bank_accounts');
+		$this->db->join('bank_member_account', 'bank_accounts.id = bank_member_account.account_id');
+		$this->db->join('member_details', 'member_details.member_id = bank_member_account.member_id');
+
+		if($accnt_no != null){
+			$this->db->where('bank_account_number', $accnt_no);
+		}
+
+		if($status != null){
+			$this->db->where('bank_accounts.status', $status);
+		}
+
+		if($account_type_id != null){
+			$this->db->where('bank_account_id', $account_type_id);
+                }
+
+
+		if(!empty($account_type_short_code)){
+			switch($account_type_short_code){
+				case "saving":
+					$this->db->join('bank_account_saving', 'bank_account_saving.account_id = bank_accounts.id');
+					break;
+				case "current":
+					$this->db->join('bank_account_current', 'bank_account_current.account_id = bank_accounts.id');
+					break;
+				case "loan":
+					$this->db->join('bank_account_loan', 'bank_account_loan.account_id = bank_accounts.id');
+					break;
+				case "fd":
+					$this->db->join('bank_account_fd', 'bank_account_fd.account_id = bank_accounts.id');	
+                                        break;
+				case "rd":
+					$this->db->join('bank_account_rd', 'bank_account_rd.account_id = bank_accounts.id');
+                                        break;
+				default:
+
+			}
+		}
+
+
+		$query_result=$this->db->get();
+                $result=$query_result->result_array();
+		return $result;
+	}
+
+	public function revoke_share($member_id){
+		$allowed_balance = $this->get_general_detail('share_management', 'minimum_balance'); 	
+		
+		$this->db->select('count(*) as count_val');
+		$this->db->from('bank_account_saving');
+		$this->db->join('bank_member_account', 'bank_member_account.account_id=bank_account_saving.account_id');
+		$this->db->where('balance >= '.$allowed_balance);	
+		$this->db->where('member_id', $member_id);
+		
+		
+		$valid_account_count = $this->db->get()->row()->count_val;
+
+		
+		if($valid_account_count < 1){
+			$member_detail = $this->fetch_member_detail($member_id)[0];
+			$member_share = $member_detail['share'];
+			$this->db->trans_begin();
+				$this->db->set('share', 0, FALSE);
+				$this->db->where('member_id', $member_id);
+				$this->db->update('member_details');
+				$this->increase_bank_share($member_share);
+			$this->db->trans_complete();
+		}
+	}	
+
+	public function increase_bank_share($share){
+		$this->db->set('value', 'value+'.$share, FALSE);
+                $this->db->where('module_id', 'share_management');
+		$this->db->where('name', 'total_share');
+                $this->db->update('general_detail');
+	}
+
+	public function decrease_bank_share($share = 1){
+		$current_share = $this->get_general_detail('share_management', 'minimum_balance');
+		
+		if($current_share-$share < 0){
+			return get_phrase("not_enough_share");
+		}
+                $this->db->set('value', 'value-'.$share, FALSE);
+                $this->db->where('module_id', 'share_management');
+                $this->db->where('name', 'total_share');
+                $this->db->update('general_detail');
+		return "success";
+        }
+
+	public function change_member_share($member_id, $new_share){
+		$this->db->set('share', $new_share, FALSE);
+                $this->db->where('member_id', $member_id);
+                $this->db->update('member_details');
+	}	
+
+	public function change_account_balance($account_id, $new_amount, $table_name){
+                $this->db->set('balance', $new_amount, FALSE);
+                $this->db->where('account_id', $account_id);
+                $this->db->update($table_name);
+        }
+
+	public function updateMemberShare($member_id, $old_share, $new_share){
+
+		if($old_share ==  $new_share){
+			return get_phrase("new_share_is_same_as_old");
+		}	
+		if($new_share < 0){
+			return get_phrase("invalid_new_share");
+		}
+		$current_share = $this->get_general_detail('share_management', 'total_share');	
+
+		if($current_share+$old_share-$new_share < 0){
+			return "Insufficient share";
+		}
+
+		$this->db->trans_begin();
+		$this->change_member_share($member_id, $new_share);
+		$this->increase_bank_share($old_share-$new_share);
+	
+		if ($this->db->trans_status() === FALSE)
+                {
+                        $this->db->trans_rollback();
+			return get_phrase('database_error', true);
+                }
+                else
+                {
+                        $this->db->trans_commit();
+                }	
+
+		$add_remove = null;
+
+		if($old_share>$new_share){
+			$add_remove = REMOVE_SHARE;
+		}else{
+			$add_remove = ADD_SHARE;
+		}
+		$this->logShareTransaction(TRANSACTION_MODE_TRANSFER, $add_remove, $member_id, null, abs($old_share-$new_share));
+		
+
+		return "success";
+	}
+
+	public function logShareTransaction($transaction_remarks, $add_remove, $from_member_id,$to_member_id, $share){
+		$user_id = $this->session->userdata('user_id');
+		$reference_id = $this->Adminmodel->get_general_detail('accnt_gen', 'credit_reference') . $this->Adminmodel->get_sequence('credit_reference');
+		
+		$data['user_id'] = $user_id;
+		$data['reference_id'] = $reference_id;
+		$data['transaction_remarks'] = $transaction_remarks;
+		$data['add_remove'] = $add_remove;
+		$data['from_member_id'] = $from_member_id;
+		$data['to_member_id'] = $to_member_id;
+		$data['share'] = $share;
+		$data['transaction_time'] = Date('Y-m-d');
+
+		$this->db->insert('share_transaction_detail', $data);
+
+		return $reference_id;
+
+	}
+
+	public function updateFundTrasaction($reference_id, $column_name, $new_value){
+		$this->db->set($column_name, $new_value);
+		$this->db->where('reference_id', $reference_id);
+		$this->db->update('bank_transaction_detail');
+		
+	}
+
+	public function logFundTrasaction($account_number, $member_id, $account_id, $account_type_short_code, $account_type_id, $credit_debit, $amount, $late_fee, $account_balance_before, $account_balance_after, $transaction_remarks, $linked_reference_id, $payment_mode, $payment_mode_no, $bank_ifsc, $bank_name, $bank_branch){
+		$user_id = $this->session->userdata('user_id');
+
+		
+                $reference_id = $this->Adminmodel->get_general_detail('accnt_gen', 'transfer_reference') . $this->Adminmodel->get_sequence('transfer_reference');
+
+                $data['user_id'] = $user_id;
+                $data['reference_id'] = $reference_id;
+                $data['account_number'] = $account_number;
+                $data['member_id'] = $member_id;
+                $data['account_id'] = $account_id;
+		$data['account_type_id'] = $account_type_id;
+		$data['credit_debit'] = $credit_debit;
+		$data['amount'] = $amount;
+		$data['late_fee'] = $late_fee;
+		$data['account_balance_before'] = $account_balance_before;
+		$data['account_balance_after'] = $account_balance_after;
+		$data['transaction_remarks'] = $transaction_remarks;
+		$data['linked_reference_id'] = $linked_reference_id;
+		$data['account_type_short_code'] = $account_type_short_code;
+		
+		$data['day'] = date("d");
+                $data['month'] = date("m");
+                $data['year'] = date("Y");
+                $data['transaction_time'] = Date('Y-m-d H:i:s');
+
+		$payment_data['payment_mode'] = $payment_mode;
+		$payment_data['reference_id'] = $reference_id;
+		$payment_data['payment_mode_no'] = $payment_mode_no;
+                $payment_data['bank_ifsc'] = $bank_ifsc;
+                $payment_data['bank_name'] = $bank_name;
+                $payment_data['bank_branch'] = $bank_branch;
+
+		/**echo $this->db->set($data)->get_compiled_insert('bank_transaction_detail');
+		echo $this->db->set($payment_data)->get_compiled_insert('bank_transaction_payment_mode_detail');
+		die();**/
+
+                $this->db->insert('bank_transaction_detail', $data);
+		$this->db->insert('bank_transaction_payment_mode_detail', $payment_data);
+                return $reference_id;
+	}
+
+	public function get_user($id){
+
+                $this->db->select('*');
+                $this->db->from('member_details');
+                $this->db->where("member_id",$id);
+                $query_result=$this->db->get();
+                $result=$query_result->row();
+                return $result;
+        }
+
+	public function transferShare($from_member_id, $to_member_id, $share, $from_member_share=null, $to_member_share=null, $transaction_remarks=null){
+
+                if($share < 0){
+                        return get_phrase("invalid_share");
+                }
+
+                if($from_member_share < $share){
+                        return "Insufficient share";
+                }
+
+		if($from_member_share==null){
+			$from_member_share = $this->get_user($from_member_id)['share'];	
+		}
+
+		if($to_member_share==null){
+                        $to_member_share = $this->get_user($to_member_id)['share']; 
+                }
+
+                $this->db->trans_begin();
+                $this->change_member_share($from_member_id, $from_member_share-$share);
+		$this->change_member_share($to_member_id, $to_member_share+$share);
+
+                if ($this->db->trans_status() === FALSE)
+                {
+                        $this->db->trans_rollback();
+                        return get_phrase('database_error', true);
+                }
+                else
+                {
+                        $this->db->trans_commit();
+                }
+
+		$this->logShareTransaction($transaction_remarks, TRANSFER_SHARE, $from_member_id, $to_member_id, $share);
+
+
+                return "success";
+        }
+
+
+	public function transferFund($from_account_number, $from_member_id, $to_member_id, $to_account_number, $transfer_amount, $transaction_remarks, $from_account_balance, $to_account_balance, $from_account_id, $to_account_id, $from_account_type_short_code, $to_account_type_short_code, $from_account_type_id, $to_account_type_id){
+
+                if($transfer_amount < 1){
+                        return get_phrase("invalid_transfer_amount");
+                }
+
+                if($from_account_balance < $transfer_amount){
+                        return "Insufficient fund";
+                }
+
+		$from_table_name=null;
+		$to_table_name=null;
+
+		switch($from_account_type_short_code){
+			case SAVING_SHORT_CODE:
+				$from_table_name = 'bank_account_saving';
+				break;
+			case CURRENT_SHORT_CODE:
+                                $from_table_name = 'bank_account_current';
+                                break;
+			default:
+				return get_phrase("account_type_not_allowed");
+
+		}
+
+		switch($to_account_type_short_code){
+                        case SAVING_SHORT_CODE:
+                                $to_table_name = 'bank_account_saving';
+                                break;
+                        case CURRENT_SHORT_CODE:
+                                $to_table_name = 'bank_account_current';
+                                break;
+                        default:
+                                return get_phrase("account_type_not_allowed");
+
+                }
+
+                $this->db->trans_begin();
+			$this->change_account_balance($from_account_id, $from_account_balance-$transfer_amount, $from_table_name);
+			$this->change_account_balance($to_account_id, $to_account_balance+$transfer_amount, $to_table_name);
+		$from_reference_id = $this->logFundTrasaction($from_account_number, $from_member_id, $from_account_id, $from_account_type_short_code, $from_account_type_id, DEBIT, $transfer_amount, null, $from_account_balance, $from_account_balance-$transfer_amount, $transaction_remarks, null, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+                $to_reference_id = $this->logFundTrasaction($to_account_number, $to_member_id, $to_account_id, $to_account_type_short_code, $to_account_type_id, CREDIT, $transfer_amount, null, $to_account_balance, $to_account_balance+$transfer_amount, $transaction_remarks, $from_reference_id, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+
+                $this->updateFundTrasaction($from_reference_id, 'linked_reference_id', $to_reference_id);
+
+                if ($this->db->trans_status() === FALSE)
+                {
+                        $this->db->trans_rollback();
+                        return get_phrase('database_error', true);
+                }
+                else
+                {
+                        $this->db->trans_commit();
+                }
+
+
+                return "success";
+        }
+
+	public function getLoanAccountDetail($accnt_no, $status=null){
+		$this->db->select('*');
+		$this->db->from('bank_accounts');
+		$this->db->join('bank_account_types', 'bank_accounts.bank_account_id = bank_account_types.tbl_id');
+		$this->db->join('bank_account_fd', 'bank_account_fd.account_id = bank_accounts.id');
+		$this->db->join('bank_member_account', 'bank_member_account.account_id = bank_accounts.id');
+		$this->db->join('member_details', 'bank_member_account.member_id = member_details.member_id');
+		$this->db->where('bank_accounts.bank_account_number', $accnt_no);
+
+
+
+		
+
+		$result = $this->db->get();
+
+		$return = $result->result_array();
+
+		if(empty($return)){
+			return null;
+		}else{
+			return $return[0];
+		}
+	}
+
+	
 }

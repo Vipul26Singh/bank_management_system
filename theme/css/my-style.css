@@ -12,6 +12,12 @@ body {
     padding: 0;
     overflow-x: hidden;
 }
+
+input[readonly]
+{
+    background-color:blue;
+}
+
 #wrapper {
     padding-left: 250px;
     width: 100%;
@@ -846,6 +852,9 @@ box-shadow: 5px 3px 1px #808080;
 .account-div{
 width:100%;
 }
+
     
 }
+
+
 @media screen and (max-width: 320px) {}

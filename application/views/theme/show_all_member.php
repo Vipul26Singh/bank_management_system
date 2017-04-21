@@ -31,7 +31,7 @@
               <td><?php echo (strlen($details->pancard_number)>15)?substr($details->pancard_number,0,15)."...":$details->pancard_number;?></td>
                 <td><?php echo $details->opening_date?></td>
 	<td><a class="mybtn btn-info btn-xs account-edit-btn" href="<?php echo site_url('BankData/editMember/'.$details->member_id) ?>"><i class="fa fa-search"></i> <?php get_phrase('view') ?></a>
-	<a class="mybtn btn-danger btn-xs account-remove-btn" href="<?php echo site_url('BankData/deactivateMember/'.$details->member_id) ?>"><i class="fa fa-trash-o"></i> <?php get_phrase('deactivate') ?></a>
+	<a class="mybtn btn-danger btn-xs account-remove-btn" href="<?php echo site_url('Admin/deactivateMember/'.$details->member_id) ?>"><i class="fa fa-trash-o"></i> <?php get_phrase('deactivate') ?></a>
 
 	</td>
         </tr><?php }?>

@@ -41,8 +41,8 @@
 <script src="<?php echo base_url() ?>/theme/js/jquery.js"></script>
 <script src='<?php echo base_url() ?>/theme/js/modernizr.js'></script>
     
-<script src="<?php echo base_url() ?>/theme/js/pace.min.js"></script>
-<link href="<?php echo base_url() ?>/theme/css/pace-theme-minimal.css" rel="stylesheet" />
+<!--<script src="<?php echo base_url() ?>/theme/js/pace.min.js"></script>
+--><link href="<?php echo base_url() ?>/theme/css/pace-theme-minimal.css" rel="stylesheet" />
 
 
 </head>
@@ -263,9 +263,9 @@
 <div class="sidebar">
 
 <ul id="menu" class="menu-helper asyn-menu">
-<li><a class="active-menu" href="<?php echo site_url('Admin/dashboard') ?>"><i  class="fa fa-tachometer"></i>
+<!-- <li><a class="active-menu" href="<?php echo site_url('Admin/dashboard') ?>"><i  class="fa fa-tachometer"></i>
 <span class="title"><?php get_phrase('dashboard') ?></span></a></li>
-
+-->
 <li class="has-sub">
 <a href="#"><i class="fa fa-suitcase"></i>
 <span class="title"><?php get_phrase('widgets') ?></span></a>
@@ -274,28 +274,46 @@
     <li><a href="#" data-toggle="modal" data-target="#calendarModal"><i class="fa fa-calendar"></i> <?php get_phrase('calendar') ?></a></li>
 </ul>
 
+
+<li class="has-sub">
+<a href="#"><i class="fa fa-university"></i>
+<span class="title"><?php get_phrase('members') ?></span></a>
+<ul class="collapse">
+        <li><a href="<?php echo site_url('Admin/addMember') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('add_member') ?></a></li>
+        <li><a href="<?php echo site_url('BankData/show_all_member') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('manage_member') ?></a></li>
+	<li><a href="<?php echo site_url('BankData/show_deactivated_member') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('deactivated_member') ?></a></li>
+</ul>
+</li>
+
 <li class="has-sub">
 <a href="#"><i class="fa fa-university"></i>
 <span class="title"><?php get_phrase('accounts') ?></span></a>
 <ul class="collapse">
-	<li><a href="<?php echo site_url('Admin/addMember') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('add_member') ?></a></li>
-	<li><a href="<?php echo site_url('BankData/show_all_member') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('manage_member') ?></a></li>
 	<li><a href="<?php echo site_url('Admin/addAccount') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('add_accounts') ?></a></li>
 	<li><a href="<?php echo site_url('Admin/manageAccount') ?>"><i class="fa fa-table"></i> <?php get_phrase('manage_accounts') ?></a></li>
-	<li><a href="<?php echo site_url('Admin/add_fixed_deposit') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('add_fixed_deposit') ?></a></li>
-    <li><a href="<?php echo site_url('Admin/add_bank_loan') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('manage_loan') ?></a></li>
+	<li><a href="<?php echo site_url('Admin/manageAccount/deactivateList') ?>"><i class="fa fa-table"></i> <?php get_phrase('deactivated_accounts') ?></a></li>
+	<!-- <li><a href="<?php echo site_url('Admin/add_fixed_deposit') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('add_fixed_deposit') ?></a></li> -->
+     <!-- <li><a href="<?php echo site_url('Admin/add_bank_loan') ?>"><i class="fa fa-user-plus"></i> <?php get_phrase('manage_loan') ?></a></li> -->
+</ul>
+</li>
+<li class="has-sub">
+<a href="#"><i class="fa fa-money"></i>
+<span class="title"><?php get_phrase('share_management') ?></span></a>
+<ul class="collapse">
+    <li><a class="asyn-income" href="<?php echo site_url('Admin/manageShare') ?>"><i class="fa fa-plus-square"></i> <?php get_phrase('manage_share') ?></a></li>
+    <li><a class="asyn-income" href="<?php echo site_url('Admin/transferShare') ?>"><i class="fa fa-plus-square"></i> <?php get_phrase('transfer_share') ?></a></li>
 </ul>
 </li>
 <li class="has-sub">
 <a href="#"><i class="fa fa-money"></i>
 <span class="title"><?php get_phrase('transaction') ?></span></a>
 <ul class="collapse">
-    <li><a class="asyn-income" href="<?php echo site_url('Admin/addIncome') ?>"><i class="fa fa-plus-square"></i> <?php get_phrase('deposit') ?></a></li>
-    <li><a class="asyn-expense" href="<?php echo site_url('Admin/addExpense') ?>"><i class="fa fa-minus-square"></i> <?php get_phrase('withdraw') ?></a></li>
-    <li><a href="<?php echo site_url('Admin/transfer') ?>"><i class="fa fa-retweet"></i> <?php get_phrase('transfer') ?></a></li>
-    <li><a href="<?php echo site_url('Admin/depositShare') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('depositShare') ?></a></li>
+    <li><a class="asyn-income" href="<?php echo site_url('Admin/creditAccount') ?>"><i class="fa fa-plus-square"></i> <?php get_phrase('credit_account') ?></a></li>
+    <li><a class="asyn-expense" href="<?php echo site_url('Admin/debitAccount') ?>"><i class="fa fa-minus-square"></i> <?php get_phrase('debit_account') ?></a></li>
+    <li><a href="<?php echo site_url('Admin/transferFund') ?>"><i class="fa fa-retweet"></i> <?php get_phrase('transfer_fund') ?></a></li>
+    <!-- <li><a href="<?php echo site_url('Admin/depositShare') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('depositShare') ?></a></li> -->
      <li><a href="<?php echo site_url('Admin/payLoan') ?>"><i class="fa fa-retweet"></i> <?php get_phrase('pay_loan') ?></a></li>
-      <li><a href="<?php echo site_url('Admin/take_fixed_deposit') ?>"><i class="fa fa-retweet"></i> <?php get_phrase('take_fixed_deposit') ?></a></li>
+      <li><a href="<?php echo site_url('Admin/withdrawFixedDeposit') ?>"><i class="fa fa-retweet"></i> <?php get_phrase('withdraw_fixed_deposit') ?></a></li>
     <!-- <li><a href="<?php echo site_url('Admin/manageIncome') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('manage_Deposit') ?></a></li>
     <li><a href="<?php echo site_url('Admin/manageExpense') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('manage_withdraw') ?></a></li> -->
 </ul>
@@ -375,9 +393,11 @@
 <span class="title"><?php get_phrase('administration') ?></span></a>
 <ul class="collapse">
     <li><a href="<?php echo site_url('Admin/userManagement') ?>"><i class="fa fa-users"></i> <?php get_phrase('user_management') ?></a></li>
-     <li><a href="<?php echo site_url('Admin/fdManagement') ?>"><i class="fa fa-users"></i> <?php get_phrase('fd_management') ?></a></li>
-      <li><a href="<?php echo site_url('Admin/loanSetup') ?>"><i class="fa fa-users"></i> <?php get_phrase('loan_setup') ?></a></li>
+     <!-- <li><a href="<?php echo site_url('Admin/fdManagement') ?>"><i class="fa fa-users"></i> <?php get_phrase('fd_management') ?></a></li> -->
+	<li><a href="<?php echo site_url('Admin/interestManagement') ?>"><i class="fa fa-users"></i> <?php get_phrase('interest_management') ?></a></li>
+     <!-- <li><a href="<?php echo site_url('Admin/loanSetup') ?>"><i class="fa fa-users"></i> <?php get_phrase('loan_setup') ?></a></li> -->
       <li><a href="<?php echo site_url('Admin/addPhotoIdentity') ?>"><i class="fa fa-users"></i> <?php get_phrase('add_photo_identity') ?></a></li>
+	<li><a href="<?php echo site_url('Admin/serviceSetup') ?>"><i class="fa fa-users"></i> <?php get_phrase('item_and_service_setup') ?></a></li>
     <li><a href="<?php echo site_url('Admin/addLanguage') ?>"><i class="fa fa-language"></i> <?php get_phrase('add_language') ?></a></li>
     <li><a href="<?php echo site_url('Admin/generalSettings') ?>"><i class="fa fa-cogs"></i> <?php get_phrase('general_settings') ?></a></li>
     <li><a href="<?php echo site_url('Admin/backupDatabase') ?>"><i class="fa fa-database"></i> <?php get_phrase('backup_database') ?></a></li>

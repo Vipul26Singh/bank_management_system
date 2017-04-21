@@ -15,17 +15,17 @@
 
 <div class="col-md-5 col-lg-5 col-sm-5">
 <!--Start Panel-->
-<div class="alert alert-info"><p>Add Account Type Here and set if joint accounts are allowed</p><p>Example:- Current , Savings</p></div>
+<div class="alert alert-info"><p>Edit Account Type Here and set if joint accounts are allowed</p><p>Example:- Current , Savings</p></div>
 <div class="panel panel-default">
     <!-- Default panel contents -->
-    <div class="panel-heading"><?php get_phrase('add_account_type') ?></div>
+    <div class="panel-heading"><?php get_phrase('edit_account_type') ?></div>
     <div class="panel-body add-client">
     <form id="add-payment-method">
  <input type="hidden" name="action" id="action" value="insert"/>  
  <input type="hidden" name="p_method_id" id="p_method_id" value=""/> 
  <div class="form-group"> 
     <label for="account"><?php get_phrase('name') ?></label>
-    <input type="text" class="form-control" min="0" maxlength="20" name="p-method" id="p-method"/>   
+    <input type="text" class="form-control" min="0" maxlength="20" name="p-method" id="p-method" readonly="true"/>   
   </div> 
 
 
@@ -36,7 +36,16 @@
 	<option value="1">YES</option>
     </select>
   </div>
-            
+
+           
+  <div class="form-group">
+    <label for="activation"><?php get_phrase('activate_account_type') ?></label>
+    <select class="form-control" name="activate_account_type" id="activate_account_type">
+        <option value="1">ACTIVATE</option>
+        <option value="0">DEACTIVATE</option>
+    </select>
+  </div>
+ 
    <button type="submit"  class="mybtn btn-submit"><i class="fa fa-check"></i> <?php get_phrase('save') ?></button>
 </form>
        
@@ -57,11 +66,12 @@
     <div class="panel-heading"><?php get_phrase('add_account_type') ?></div>
     <div class="panel-body">
        <table id="method-table" class="table table-striped table-bordered table-condensed">
-        <th><?php get_phrase('account_type') ?></th><th><?php get_phrase('joint_account_applicable') ?></th><th width="110"><?php get_phrase('action') ?></th>
+        <th><?php get_phrase('account_type') ?></th><th><?php get_phrase('joint_account_applicable') ?></th><th width="110"><?php get_phrase('activated') ?></th><th width="110"><?php get_phrase('action') ?></th>
        <?php foreach($account_types as $account){ ?>
         <tr>
         <td class="t_name"><?php echo $account->account_name ?></td>
-	<td class="t_name"><?php if($account->joint_account==0) echo "NO"; else echo "YES"; ?></td>
+	<td class="t_joint"><?php if($account->joint_account==0) echo "NO"; else echo "YES"; ?></td>
+	<td class="t_status"><?php if($account->status==1) echo "YES"; else echo "NO"; ?></td>
         <td><a class="mybtn btn-info btn-xs method-edit-btn"  href="<?php echo $account->tbl_id ?>"><?php get_phrase('edit') ?></a>
         </tr>
        <?php } ?>
@@ -144,6 +154,18 @@ var main=$(this);
 $("#action").val("update");
 $("#p_method_id").val($(main).attr("href"));
 $("#p-method").val($(main).closest("tr").find(".t_name").html()); 
+if ($(main).closest("tr").find(".t_joint").html() != 'YES') {
+	$("#allow_joint_account").val('0');
+}else{
+	$("#allow_joint_account").val('1');
+}
+
+if ($(main).closest("tr").find(".t_status").html() == 'YES') {
+        $("#activate_account_type").val('1');
+}else{
+        $("#activate_account_type").val('0');
+}
+
 //get table index
 var tr = $(main).closest('tr');
 myRow = tr.index();    

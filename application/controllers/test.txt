@@ -1,0 +1,8 @@
+SELECT *
+FROM `bank_accounts`
+JOIN `bank_member_account` ON `bank_accounts`.`id` = `bank_member_account`.`account_id`
+JOIN `member_details` ON `member_details`.`member_id` = `bank_member_account`.`member_id`
+JOIN `bank_account_saving` ON `bank_account_saving`.`account_id` = `bank_accounts`.`id`
+WHERE `bank_account_number` = 'SBA1000000000018'
+AND `bank_accounts`.`status` = 1
+AND `bank_account_id` = '6'

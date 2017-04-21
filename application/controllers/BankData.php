@@ -7,6 +7,7 @@ class BankData extends CI_Controller{
 		$this->load->model('Adminmodel');
 		$this->load->database();
 	}
+
 	public function show_all_member($action='')
 	{
 		$data['data'] = $this->Adminmodel->getAllAccountDetails();
@@ -28,6 +29,30 @@ class BankData extends CI_Controller{
 
                 }
 	}
+
+	public function show_deactivated_member($action='')
+        {
+                $data['data'] = $this->Adminmodel->getAllAccountDetails(null, null, '0');
+		
+                if($action=='asyn'){
+                        $this->load->view('theme/show_deactivated_member',$data);
+                }else if($action==''){
+                        $this->load->view('theme/include/header');
+                        $this->load->view('theme/show_deactivated_member',$data);
+                        $this->load->view('theme/include/footer');
+                }else if($action=='search'){
+                        $data=array();
+                        $mobile = $this->input->get('search_mobile');
+                        $name = $this->input->get('search_name');
+
+                        $data['data']=$this->Adminmodel->getAllAccountDetails($mobile,strtoupper($name));
+                        $this->load->view('theme/include/header');
+                        $this->load->view('theme/show_deactivated_member',$data);
+                        $this->load->view('theme/include/footer');
+
+                }
+        }
+
 	public function show_all_current_saving($action='')
 	{
 		$data=array();
@@ -56,14 +81,5 @@ class BankData extends CI_Controller{
 			$this->load->view('theme/include/footer');
 		}     
 	}
-	public function deactivateMember($member_id,$action='')
-        {
-		$data = array();
-                $data['status'] = 0;
-                $this->db->where('member_id', $member_id);
-                $this->db->update('member_details', $data);
-                echo 1;
-
-        }
 }
 ?>

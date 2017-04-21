@@ -1,0 +1,95 @@
+$data['member_name'] = $this->input->post('member_name', true);
+                        $transaction_data['member_id'] = $this->input->post('member_id', true);
+                        $account_type = json_decode($this->input->post('credit_account_type', true), true);
+                        $transaction_data['account_type_short_code'] = $account_type['short_code'];
+                        $transaction_data['account_type_id'] = $account_type['id'];
+
+                        $transaction_data['account_number']=$this->input->post('account_number', true);
+                        $transaction_data['account_id'] = $this->input->post('account_id', true);
+                        $transaction_data['credit_debit'] = TRANSACTION_TYPE_CREDIT;
+                        $transaction_data['amount'] = $this->input->post('credit_amount', true);
+                        $transaction_data['user_id'] = $this->input->post('active_by', true);
+
+                        $credit_payment_mode= json_decode($this->input->post('credit_payment_mode', true), true);
+
+                        $extra_detail = $credit_payment_mode['extra_detail'];
+
+                        $payment_data['payment_mode'] = $credit_payment_mode['value'];
+
+                        $transaction_data['account_balance_before'] = $this->input->post('account_balance', true);
+                        $transaction_data['account_balance_after'] = $transaction_data['account_balance_before']+$transaction_data['amount'];
+                        $transaction_data['transaction_remarks'] = $this->input->post('transaction_remarks', true);
+                        $transaction_data['day'] = date("d");
+                        $transaction_data['month'] = date("m");
+                        $transaction_data['year'] = date("Y");
+                        $transaction_data['transaction_time'] = date("Y-m-d H:i:s");
+                        $transaction_data['reference_id'] = $this->Adminmodel->get_general_detail('accnt_gen', 'credit_reference') . $this->Adminmodel->get_sequence('credit_reference');
+                        $payment_data['reference_id'] = $transaction_data['reference_id'];
+
+
+                        if($extra_detail == "1"){
+                                $payment_data['payment_mode_no'] = $this->input->post('credit_payment_number', true);
+                                $payment_data['bank_ifsc'] = $this->input->post('credit_payment_bank_ifsc', true);
+                                $payment_data['bank_name'] = $this->input->post('credit_payment_bank_name', true);
+                                $payment_data['bank_branch'] = $this->input->post('credit_payment_bank_branch', true);
+                        }
+
+			//-----Validation-----//   
+                        $this->form_validation->set_rules('member_name', 'Member Id', 'trim|required');
+                        $this->form_validation->set_rules('credit_account_type', 'Account type', 'trim|required');
+                        $this->form_validation->set_rules('account_number', 'Account Number', 'trim|required');
+                        $this->form_validation->set_rules('credit_payment_mode', 'Payment mode', 'trim|required');
+                        $this->form_validation->set_rules('credit_amount', 'Credit Amount', 'trim|required');
+
+                        if($extra_detail == "1"){
+                                $this->form_validation->set_rules('credit_payment_bank_ifsc', 'Bank Ifsc', 'trim|required');
+                                $this->form_validation->set_rules('credit_payment_number','Payment Mode Number','trim|required');
+                        }
+
+                        $this->form_validation->set_rules('transaction_remarks', 'Transaction Remarks', 'trim|required');
+
+                        if ($this->form_validation->run() == FALSE)
+                        {
+                                echo validation_errors('<span class="ion-android-alert failedAlert2"> ','</span>');
+                                die();
+                        }
+
+                        if(empty($transaction_data['reference_id'])){
+                                echo '<span class="ion-android-alert failedAlert2"> '.'Unable to generate reference id'.'</span>';
+                                echo '<span class="ion-android-alert failedAlert2"> '.'Contact technical team'.'</span>';
+                                die();
+                        }
+                        //----End validation----//
+
+			$this->db->trans_begin();
+                                $this->db->insert('bank_transaction_detail', $transaction_data);
+                                $this->db->insert('bank_transaction_payment_mode_detail', $payment_data);
+                                switch($transaction_data['account_type_short_code']){
+                                        case "saving":
+                                                $this->db->set('balance', $transaction_data['account_balance_after'], FALSE);
+                                                $this->db->where('account_id', $transaction_data['account_id']);
+                                                $this->db->update('bank_account_saving');
+                                                break;
+                                        case "current":
+                                                $this->db->set('balance', $transaction_data['account_balance_after'], FALSE);
+                                                $this->db->where('account_id', $transaction_data['account_id']);
+                                                $this->db->update('bank_account_current');
+                                                break;
+                                        default:
+                                                echo "Invalid account type";
+                                                $this->db->trans_rollback();
+                                                die();
+                                }
+
+                        if ($this->db->trans_status() === FALSE)
+                        {
+                                echo get_phrase('database_error', true);
+                                $this->db->trans_rollback();
+                                die();
+                        }
+                        else
+                        {
+                                $this->db->trans_commit();
+                        }
+
+                        echo json_encode(array('error'=>'false', 'transaction_number'=>$transaction_data['reference_id']));

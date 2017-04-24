@@ -51,6 +51,16 @@
     <input type="string" class="form-control"  readonly="true" name="pay_amount" id="pay_amount">
   </div>
 
+  <div class="form-group">
+    <label for="account_number"><?php get_phrase('service_charge') ?></label>
+    <input type="string" class="form-control"  readonly="true" name="service_charge" id="service_charge">
+  </div>
+
+  <div class="form-group">
+    <label for="account_number"><?php get_phrase('net_pay_amount') ?></label>
+    <input type="string" class="form-control"  readonly="true" name="net_pay_amount" id="net_pay_amount">
+  </div>
+
 
   <div class="form-group">
     <label for="note"><?php get_phrase('transaction_remarks') ?><span style='color:red'>  *</span></label>
@@ -100,9 +110,11 @@ $(document).ready(function(){
 			if(!accnt_no){
 				return false;
 			}
+				var accnt_detail = null;
 
   				$.ajax({
                                		method : "POST",
+					async: false,
                                		url : "<?php echo site_url('Admin/withdrawFixedDeposit/fetch_account_detail')?>",
                                         	data : {'account_number': accnt_no},
 							success : function (data) {
@@ -113,15 +125,39 @@ $(document).ready(function(){
 										type: "warning",
 									});
 								}else{
-									var accnt_detail = JSON.parse(data);
+									accnt_detail = JSON.parse(data);
+									var account_id = accnt_detail['account_id'];
 									$('#member_id').val(accnt_detail['member_id']);       
-                        						$('#member_name').val(accnt_detail['member_name']);
-                        						$('#maturity_date').val(accnt_detail['maturity_date']);
-                        						$('#maturity_amount').val(accnt_detail['maturity_amount']);
-                        						$('#pay_amount').val(accnt_detail['pay_amount']);
+                                                                        $('#member_name').val(accnt_detail['member_name']);
+                                                                        $('#maturity_date').val(accnt_detail['maturity_date']);
+                                                                        $('#maturity_amount').val(accnt_detail['maturity_amount']);
+                                                                        $('#pay_amount').val(accnt_detail['pay_amount']);
+
+									$.ajax({
+                                        					method : "POST",
+                                        					url : "<?php echo site_url('Admin/withdrawFixedDeposit/fetch_service_charge')?>",
+                                                				data : {'account_id': account_id},
+                                                        			success : function (data) {
+                                                                		if(!data){
+                                                                        		swal({
+                                                                                		title: "Invalid account",
+                                                                                		text: "Account number not found",
+                                                                                		type: "warning",
+                                                                        		});
+                                                                		}else{
+                                                                        		var charge_detail = JSON.parse(data);
+											var net_pay = accnt_detail['pay_amount']-charge_detail['remaining_charge'];
+                                                                        		$('#service_charge').val(charge_detail['remaining_charge']);       
+                                                                        		$('#net_pay_amount').val(net_pay);
+                                                                }
+                                                        }
+                                        });
+									
 								}
                                         		}
                          		});
+
+
 	});
 
 })

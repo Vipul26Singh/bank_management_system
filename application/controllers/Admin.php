@@ -353,7 +353,7 @@ class Admin extends CI_Controller {
 
 		else if($action == 'fetch_account_detail'){
 			$accnt_no = $this->input->post('account_number', true);
-			$result = $this->Adminmodel->getLoanAccountDetail($accnt_no);
+			$result = $this->Adminmodel->getFdAccountDetail($accnt_no);
 
 			if(empty($result)){
 				echo $result;
@@ -368,19 +368,31 @@ class Admin extends CI_Controller {
 				}
 				echo json_encode($result);
 			}
+		}else if($action == 'fetch_service_charge'){
+			$account_id = $this->input->get_post('account_id', true);
+		
+			$result = $this->Adminmodel->fetch_service_charge($account_id);
+
+			if(empty($result)){
+				echo json_encode(array('remaining_charge'=>'0'));
+			}else{
+				echo json_encode($result[0]);
+			}
 		}else if($action == 'withdraw'){
 
 			$account_number = $this->input->post('account_number', true);
-			$pay_amount = $this->input->post('pay_amount', true);
+			$pay_amount = $this->input->post('net_pay_amount', true);
+			$service_charge = $this->input->post('service_charge', true);
 			$member_id = $this->input->post('member_id', true);
 			$maturity_amount = $this->input->post('maturity_amount', true);
 			$transaction_remarks = $this->input->post('transaction_remarks', true);
 			$current_user = $this->session->userdata('user_id');
+			
 
 
 			$this->form_validation->set_rules('account_number', 'Account Number', 'trim|required');
                         $this->form_validation->set_rules('member_id', 'Member Id', 'trim|required');
-                        $this->form_validation->set_rules('pay_amount', 'Pay Amount', 'trim|required');
+                        $this->form_validation->set_rules('net_pay_amount', 'Net Pay Amount', 'trim|required');
                         $this->form_validation->set_rules('maturity_amount', 'Maturity amount', 'trim|required');
                         $this->form_validation->set_rules('transaction_remarks', 'Transaction remarks', 'trim|required');
 
@@ -397,7 +409,8 @@ class Admin extends CI_Controller {
                                 die();
                         }
 
-                        if($account_detail['status'] == 1){
+
+                        if($account_detail['status'] == 0){
                                 echo '<span class="ion-android-alert failedAlert2"> Already withdrawn or account is inactive </span>';
                                 die();
                         }
@@ -410,6 +423,7 @@ class Admin extends CI_Controller {
 			}
 
 			$today = Date('Y-m-d H:i:s');
+
 			$this->db->trans_begin();
 
 
@@ -421,6 +435,12 @@ class Admin extends CI_Controller {
 			$this->db->update('bank_accounts');
 
 			$reference_id = $this->Adminmodel->logFundTrasaction($account_number, $member_id, $account_detail['bank_account_id'], $account_type_detail['html_id'], $account_type_detail['tbl_id'], FD_WITHDRAW, $pay_amount, null, $maturity_amount, 0, $transaction_remarks, null, TRANSACTION_MODE_CASH, null, null, null, null);
+
+
+			$this->Adminmodel->deduct_fd_service($account_detail['id'], $service_charge);
+
+
+			$this->Adminmodel->deactivate_service($account_detail['id']);
 
 
 			if ($this->db->trans_status() === FALSE)
@@ -670,7 +690,6 @@ class Admin extends CI_Controller {
                                                                 $loan_data['opening_date'] = $this->input->post('date',true);
                                                                 $loan_data['user_id'] = $this->input->post('active_by',true);
 								$loan_data['amount_paid'] = $loan_data['payable_amount'];
-
                                                                 $val = $this->add_loan_account($loan_data);
                                                                 if($val['error'] ===  true){
                                                                         $val['error'] = "true";
@@ -1227,7 +1246,6 @@ class Admin extends CI_Controller {
 		if(!empty($data['auto_deduct'])){
 			$loan_data['linked_account_id'] = $data['linked_account_id'];
                 }
-		$loan_data['account_closing_date'] = date('Y/m/d', strtotime('+'.$data['duration_in_months'].' months'));
 
 		if(empty($data['remarks'])){
 			$loan_data['remarks'] = null;
@@ -1249,11 +1267,22 @@ class Admin extends CI_Controller {
 
                 $member_data['allotment_date'] = date("Y-m-d H:i:s");
 
+
                 $this->db->trans_begin();
+
+
+
                 $this->db->insert('bank_accounts', $accnt_data);
                 $accnt_id = $this->db->insert_id();
+
+
+		$loan_data['account_closing_date'] = date('Y/m/d');
+		//$loan_data['account_closing_date'] = date('Y/m/d', strtotime($this->Adminmodel->generate_loan_installments($accnt_id, $loan_data['billing_date'], $loan_data['pay_by_days'], $loan_data['monthly_emi'], $loan_data['duration_in_months'])));
+		$this->Adminmodel->generate_loan_installments($accnt_id, $loan_data['billing_date'], $loan_data['pay_by_days'], $loan_data['monthly_emi'], $loan_data['duration_in_months']);
+
                 $loan_data['account_id'] = $accnt_id;
-                //$this->db->insert('bank_account_loan', $loan_data);
+                $this->db->insert('bank_account_loan', $loan_data);
+
                 $member_data['account_id'] = $accnt_id;
                 $member_data['member_id'] = $data['member_id'];
                 	$this->db->insert('bank_member_account', $member_data);
@@ -1261,6 +1290,7 @@ class Admin extends CI_Controller {
                         $member_data['member_id'] = $data['member_id_2'];
                         	$this->db->insert('bank_member_account', $member_data);
 		}
+
 
 		if ($this->db->trans_status() === FALSE)
                 {
@@ -1437,7 +1467,39 @@ class Admin extends CI_Controller {
 
 	}
 
+	public function manageAccountService($action='', $accnt_id='', $service_id=''){
+		$data=array();
+                if($action=='asyn'){
+                        $data['accounts']=$this->Adminmodel->get_account_service_detail(null, null, null, '1', '1');
+                        $this->load->view('theme/manage_account_service',$data);
+                }else if($action==''){
+			$data['accounts']=$this->Adminmodel->get_account_service_detail(null, null, null, '1', '1');
+                        $this->load->view('theme/include/header');
+                        $this->load->view('theme/manage_account_service',$data);
+                        $this->load->view('theme/include/footer');
+                }else if($action == 'deactivate'){
+			$this->Adminmodel->deactivate_service($accnt_id, $service_id);
+                        echo 1;
+                }else if($action == 'view'){
+			$data['accounts']=$this->Adminmodel->get_account_service_detail($accnt_id, null, $service_id, '1', '1');
+                        $this->load->view('theme/include/header');
+                        $this->load->view('theme/view_account_service',$data);
+                        $this->load->view('theme/include/footer');
+                }else if($action=='search'){
+                        $data=array();
+                        $account_number = $this->input->get_post('search_account_number');
+                        $member_name = $this->input->get_post('search_member_name');
+
+
+				$data['accounts']=$this->Adminmodel->get_account_service_detail(null, null, null, '1', '1', null, $account_number, $member_name);
+                                $this->load->view('theme/include/header');
+                                $this->load->view('theme/manage_account_service',$data);
+                                $this->load->view('theme/include/footer');
+
+                }
+	}
 	/** Method For view Manage Account Page **/ 
+
 	public function manageAccount($action='', $accnt_no='', $status = '1')
 	{
 		$empty_str = '';
@@ -1475,24 +1537,18 @@ class Admin extends CI_Controller {
                         $this->load->view('theme/include/footer');
 		}else if($action=='search'){
 			$data=array();
-			$id = $this->input->get('search');
-			$name = $this->input->get('search_name');
+			$id = strtoupper($this->input->get('search'));
+			$name = strtoupper($this->input->get('search_name'));
 
-			if(!empty($id)||!empty($name)){
-				$data['accounts']=$this->Adminmodel->getAccount($id,strtoupper($name));
+				$data['accounts']=$this->Adminmodel->fetch_account_view_detail(null, null, null, null, $id, $name);
 				$this->load->view('theme/include/header');
 				$this->load->view('theme/manage_account',$data);
 				$this->load->view('theme/include/footer');
-			}
-			else{
-				$data['accounts']=$this->Adminmodel->getAllAccounts();
-				$this->load->view('theme/include/header');
-				$this->load->view('theme/manage_account',$data);
-				$this->load->view('theme/include/footer');
-			}
 
 		}
 	}
+
+	
 
 	public function manageMember($action='')
 	{
@@ -3013,89 +3069,133 @@ class Admin extends CI_Controller {
 		$data = $this->Adminmodel->get_share($member_id,'');
 		echo json_encode($data);
 	}
-	public function payLoan($action=''){
-		$data1['payers']=$this->Adminmodel->getPayeryAndPayeeByType('Payer');
-		$data1['p_method']=$this->Adminmodel->getAllPaymentmethod();
+
+
+	
+	public function payLoan($action='', $account_number='', $account_id=''){
+		$data['available_payment_mode'] = $this->Adminmodel->get_general_detail('loan_payment_mode');
 		if($action=='asyn'){  
-			$this->load->view('theme/pay_loan',$data1);
+			$this->load->view('theme/pay_loan',$data);
 		}else if($action==''){
 			$this->load->view('theme/include/header');
-			$this->load->view('theme/pay_loan',$data1);
+			$this->load->view('theme/pay_loan',$data);
 			$this->load->view('theme/include/footer');
-		}
-		if($action=='insert'){
-			$do=$this->input->post('action');
-			$data['member_id'] = $this->input->post('member_id');
-			$data['amount'] = $this->input->post('amount');
-			$data['payment_method']=$this->input->post('p-method');
-			$data['reference_no'] = $this->input->post('reference');
-			$data['note'] = $this->input->post('note');
-			$data['date'] = Date('Y-m-d');
-			$account_balance = $this->input->post('account_balance');
-			$data['loan_id'] = $this->input->post('loan_id');
-			$data['cheque_no'] = $this->input->post('cheque_no');                        
-			$this->form_validation->set_rules('member_id','Member Id','required');
-			$this->form_validation->set_rules('loan_id','Loan Id','required');
-			$this->form_validation->set_rules('amount','Amount','required');
-			$this->form_validation->set_rules('p-method','p-method','required');
-			$this->form_validation->set_rules('member_name','Member Account Name Doen No exist','required');
-			if($data['payment_method']=='CHEQUE'){$this->form_validation->set_rules('cheque_no','Cheque','trim|required');}
-			if (!$this->form_validation->run() == FALSE)
-			{	
-				$status = $this->Adminmodel->get_account_status($data['member_id']);
-				if($status[0]->status){
-					$this->Adminmodel->get_late_fees1($data['member_id']);
-					if($account_balance>$data['amount']){
+		}else if($action=='fetch_loan_account_detail'){
+			$result1= null;
+			$result2= array();
 
-						$emis_amount = $this->Adminmodel->get_emi($data['member_id'],$data['loan_id'],$data['amount']);
-						if($emis_amount){
-							$response = $this->Adminmodel->getBalance($data['member_id'],$data['amount'],"loan", $this->input->post('member_id'),$data['loan_id']);
-
-							if($response){
-								$this->Adminmodel->getBalance('',$data['amount'],"sub", $this->input->post('member_id')); 
-								$this->db->insert('loan_transaction',$data);
-								$data2['type']='LoanEmi'; 
-								$data2['trans_date']=Date('Y-m-d');
-								$data2['amount']= $data['amount']; 
-								$data2['p_method']=$data['payment_method']; 
-								$data2['ref']=$data['reference_no']; 
-								$data2['note']=$data['note'];  
-								$data2['dr']=$data['amount'];  
-								$data2['cr']=0;
-								$data2['cheque_no'] = $data['cheque_no'];
-								$data2['user_id']=$this->session->userdata('user_id');
-								$data2['member_id']=$this->input->post('member_id');
-								$bal = $this->Adminmodel->get_balance($data['member_id']);
-								$data2['bal']=$bal->account_balance + $data['amount'];
-								$this->db->insert('transaction',$data2);
-								//insert Transaction Data
-
-								echo "true";   
-							}
-							else{
-								//echo "All Field Must Required With Valid Length !";
-								echo "All Emis Paid";
-							}
-
-						}else{
-							//echo "All Field Must Required With Valid Length !";
-							echo 'Please Pay Under Total Emi Amount';
-
-						}
-
-
-
-					}else{ echo "You Dont Have Saficiant Balance ";}
-				}else{ echo "Account Deactivated";}
+			if(empty($account_number)){
+				echo "Account number is empty";
 			}
-			else{
-				//echo "All Field Must Required With Valid Length !";
+
+			$result = $this->Adminmodel->getAccountDetail(null,  "bank_account_loan", "1", $account_number);
+			
+			if(!empty($result)){
+				$result['account_number'] = $result['bank_account_number'];
+				$result['duration'] = $result['duration_in_months'];
+
+				$result1 = $this->Adminmodel->fetch_loan_account_summary($result['account_id']); 
+				//late_fee, last_payment_date, total_due_amount
+			}else{
+				echo "Account not found";
+				die();
+			}
+			echo json_encode(array_merge($result1, $result));
+		}else if($action=='pay_installment'){
+			$account_id = $this->input->post('account_id', true);
+			$total_due_amount = $this->input->post('total_due_amount', true);
+			$amount_payed = $this->input->post('amount_payed', true);
+			$member_id = $this->input->post('member_id', true);
+			$account_number = $this->input->post('account_number', true);
+			$payment_mode = $this->input->post('payment_mode', true);
+
+			$this->form_validation->set_rules('member_name','Member Name', 'trim|required');
+                        $this->form_validation->set_rules('monthly_emi','Monthly EMI', 'trim|required');
+                        $this->form_validation->set_rules('account_id','Account Number', 'trim|required');
+			$this->form_validation->set_rules('total_due_amount','Total due amount', 'trim|required');
+			$this->form_validation->set_rules('amount_payed','Amount payed', 'trim|required|number');
+
+
+			if($payment_mode == TRANSACTION_MODE_TRANSFER){
+				$this->form_validation->set_rules('linked_account','Linked account', 'trim|required');
+				$linked_account_number = $this->input->post('linked_account_number', true);
+			}
+
+			if($payment_mode == TRANSACTION_MODE_CHEQUE){
+				$payment_mode_no = $this->input->post('credit_payment_number', true);
+                                $bank_ifsc = $this->input->post('credit_payment_bank_ifsc', true);
+                                $bank_name = $this->input->post('credit_payment_bank_name', true);
+                                $bank_branch = $this->input->post('credit_payment_bank_branch', true);
+	
+				$this->form_validation->set_rules('credit_payment_number', 'Payment mode number', 'trim|required');	
+				$this->form_validation->set_rules('bank_ifsc', 'Bank IFSC', 'trim|required');
+			}
+                        if ($this->form_validation->run() == FALSE)
+                        {
 				echo validation_errors('<span class="ion-android-alert failedAlert2"> ','</span>');
-
+				die();
 			}
 
-		}
+			if($amount_payed > $total_due_amount){
+                                echo '<span class="ion-android-alert failedAlert2"> Amount payed can not be greater than total due amount. </span>';
+                                die();
+                        }
 
+			if(!$this->Adminmodel->is_linked_account($member_id, $account_number)){
+				echo '<span class="ion-android-alert failedAlert2"> Account does not belong to the member </span>';
+                                die();
+			}
+
+			if(!empty($linked_account_number) && !$this->Adminmodel->is_linked_account($member_id, $linked_account_number)){
+				echo '<span class="ion-android-alert failedAlert2"> Linked account does not belong to the member </span>';
+                                die();
+			}
+
+			$account_detail = $this->Adminmodel->fetch_account_view_detail($accnt_no, '', '1')[0];
+
+
+			if(!($account_detail['html_id']==SAVING_SHORT_CODE || $account_detail['html_id']==CURRENT_SHORT_CODE)){
+				echo '<span class="ion-android-alert failedAlert2"> Linked account not of current or saving type </span>';
+                                die();
+			}
+
+			$this->db->trans_begin();
+			$query_status = $this->Adminmodel->payLoanInstallment($account_id, $amount_payed);
+
+			if($query_status != "success"){
+				$this->db->trans_rollback();
+				echo get_phrase('database_error', true);
+				die();
+			}
+
+		
+			if($account_detail['html_id']==SAVING_SHORT_CODE){
+				if($this->Adminmodel->deduct_saving_service($account_id, $amount_payed)!="true"){
+                                        $this->db->trans_rollback();
+                                        echo get_phrase('database_error', true);
+                                        die();
+                                }
+
+			}else if($account_detail['html_id']==CURRENT_SHORT_CODE){
+				if($this->Adminmodel->deduct_current_service($account_id, $amount_payed)!="true"){
+					$this->db->trans_rollback();
+                                	echo get_phrase('database_error', true);
+                                	die();
+				}	
+			}	
+
+			if ($this->db->trans_status() === FALSE)
+                        {
+                       	 	$this->db->trans_rollback();
+                        }
+                        else
+                        {
+                                $this->db->trans_commit();
+				echo "success";
+				die();
+                        }
+			
+		}
 	}
 
 	public function fdManagement($action='',$param1='')
@@ -3536,78 +3636,199 @@ class Admin extends CI_Controller {
 		}
 	}
 
-	public function serviceSetup($action='',$param1=''){
-                $data['services'] = $this->Adminmodel->get_services();
-                if($action=='asyn'){
-                        $this->load->view('theme/customer_services',$data);
+
+	public function assignService($action='',$param1=''){
+		if($action=='asyn'){
+                        $data['services'] = $this->Adminmodel->get_services('1', 1);
+                        $this->load->view('theme/assign_service',$data);
                 }else if($action==''){
+                        $data['services'] = $this->Adminmodel->get_services('1', 1);
                         $this->load->view('theme/include/header');
-                        $this->load->view('theme/customer_services',$data);
+                        $this->load->view('theme/assign_service',$data);
                         $this->load->view('theme/include/footer');
+                }else if($action=='insert'){
+
+			$valid = true;
+                        $member_name = $this->input->post('member_name', true);
+                        $data['account_id'] = $this->input->post('account_id', true);
+			$bank_account_id = $this->input->post('account_type_id', true);
+                        $service_id = $this->input->post('service_id', true);
+			
+
+                        if(empty($member_name) || empty($data['account_id']) || empty($bank_account_id)){
+                                $valid = false;
+                                echo '<span class="ion-android-alert failedAlert2"> Invalid Account Number </span>';                 
+                        }
+
+                        if(empty($service_id)){
+                                $valid = false;
+                                echo '<span class="ion-android-alert failedAlert2"> Service is mandatory </span>';
+                        }
+
+                        if(!$valid){
+                                die();
+                        }
+
+
+			$service_id = json_decode($service_id, true);
+
+			$data['service_id'] = $service_id['id'];
+
+			$data['application_date'] = Date('Y-m-d H:i:s');
+			$data['user_id'] = $this->input->post('active_by', true);
+
+			$summary_data['account_id'] = $data['account_id'];
+			$summary_data['modification_date'] = Date('Y-m-d H:i:s');
+
+				
+			$account_type_detail = $this->Adminmodel->fetch_account_type_detail($bank_account_id);
+
+                	$account_type_detail = $account_type_detail[0];
+			$account_type_short_code = $account_type_detail['html_id'];
+
+			if($service_id['frequency'] == FREQUENCY_ONETIME){
+				$summary_data['remaining_charge'] = 0;
+				$data['status'] = '0';
+			}else{
+				$summary_data['remaining_charge'] = $service_id['charge'];
+				$data['status'] = '1';
+			}
+
+
+			$insert = false;
+			if(empty($this->Adminmodel->getRemainingServiceCharge($data['account_id']))){
+				$insert = true;	
+			}
+
+
+			if($service_id['frequency'] != FREQUENCY_ONETIME && !empty($this->Adminmodel->getAccountService($data['account_id'], $data['service_id'], 1))){
+				echo '<span class="ion-android-alert failedAlert2">'."Service already Assigned ".'</span>';
+				die();
+			}
+
+
+			$this->db->trans_begin();
+
+
+                           $this->db->insert('bank_account_service', $data);
+
+
+			
+                          if($insert){
+				$this->db->insert('bank_account_service_charge_summary', $summary_data);
+			}else{
+				$this->db->set('remaining_charge', 'remaining_charge+'.$summary_data['remaining_charge'] , FALSE)->where('account_id', $data['account_id'])->update('bank_account_service_charge_summary');
+			}
+
+			if($service_id['frequency'] == FREQUENCY_ONETIME){
+				switch($account_type_short_code){
+					case SAVING_SHORT_CODE:
+						$res = $this->Adminmodel->deduct_saving_service($data['account_id'], $service_id['charge']);
+						if($res!="true"){
+							echo '<span class="ion-android-alert failedAlert2"> '. $res .'</span>';
+							die();
+						}
+						break;
+					case CURRENT_SHORT_CODE:
+						$res = $this->Adminmodel->deduct_current_service($data['account_id'], $service_id['charge']);
+						if($res!="true"){
+                                                        echo '<span class="ion-android-alert failedAlert2"> '. $res .'</span>';
+							die();
+                                                }
+						break;
+					case LOAN_SHORT_CODE:
+						$res = $this->Adminmodel->deduct_loan_service($data['account_id'], $service_id['charge']);
+						if($res!="true"){
+                                                        echo '<span class="ion-android-alert failedAlert2"> '. $res .'</span>';
+							die();
+                                                }
+						break;
+					case FD_SHORT_CODE:
+						$res = $this->Adminmodel->deduct_fd_service($data['account_id'], $service_id['charge']);
+						if($res!="true"){
+                                                        echo '<span class="ion-android-alert failedAlert2"> '. $res .'</span>';
+							die();
+                                                }
+						break;
+					default:
+						echo '<span class="ion-android-alert failedAlert2"> Acconut type not supported </span>';
+						die();
+				}
+
+
+
+			}
+
+
+			if ($this->db->trans_status() === FALSE)
+                                                        {
+                                                                echo get_phrase("database_error", true);
+                                                                $this->db->trans_rollback();
+                                                        }
+                                                        else
+                                                        {
+                                                                $this->db->trans_commit();
+								echo "success";
+                                                        }
+		}
+		
+	}
+
+	public function serviceSetup($action='',$param1=''){
+
+                if($action=='asyn'){  
+			$data['services'] = $this->Adminmodel->get_services('1');
+                        $this->load->view('theme/service_master',$data);
+                }else if($action==''){
+			$data['services'] = $this->Adminmodel->get_services('1');
+                        $this->load->view('theme/include/header');
+                        $this->load->view('theme/service_master',$data);
+                        $this->load->view('theme/include/footer');
+                }
+
+                else if($action=='insert'){
+			$valid = true;
+                        $data['name'] = strtoupper($this->input->get_post('service_name', true));
+                        $data['charge'] = $this->input->get_post('service_amount', true);
+                        $data['description'] = $this->input->get_post('description', true);
+                        $data['frequency'] = $this->input->get_post('frequency', true);
+                        $data['status'] = '1';
+
+
+			if(empty($data['name'])){
+				$valid = false;
+				echo '<span class="ion-android-alert failedAlert2"> Service Name is Mandatory </span>'; 		
+			}
+
+			if(empty($data['charge']) || !is_numeric($data['charge'])){
+                                $valid = false;
+                                echo '<span class="ion-android-alert failedAlert2"> Invalid Service Amount </span>';
+                        }
+
+			if(empty($data['frequency'])){
+                                $valid = false;
+                                echo '<span class="ion-android-alert failedAlert2"> Frequency is Mandatory </span>';
+                        }
+
+
+			if(!$valid){
+				die;
+			}
+
+
+                                        $this->db->insert('bank_service_setup', $data);
+					echo "success";
+                                 
+                }
+                else if($action=='deactivate'){
+			
+			$this->db->set('status', '0')->where('id', $param1)->update('bank_service_setup');	
+			echo "success";
+
                 }
 	}
 
 
-	public function customerServices($action='',$param1=''){
-		$data['services'] = $this->Adminmodel->get_services();
-		if($action=='asyn'){  
-			$this->load->view('theme/customer_services',$data);
-		}else if($action==''){
-			$this->load->view('theme/include/header');
-			$this->load->view('theme/customer_services',$data);
-			$this->load->view('theme/include/footer');
-		}
-
-		if($action=='insert'){
-			$data = array();
-			$data['service_name'] = strtoupper($this->input->post('service_name'));
-			$data['service_amount'] = $this->input->post('service_amount');
-
-			$this->form_validation->set_rules('service_name','Service Name','required');
-			$this->form_validation->set_rules('service_amount','Service Amount','required');
-			if(!value_exists3('customer_services','service_name',$data['service_name'])){
-				if (!$this->form_validation->run() == FALSE)
-				{
-					$do=$this->input->post('action',true);     
-					if($do=='insert'){ 
-						//Check Duplicate Entry     
-						if($this->db->insert('customer_services',$data)){
-							$last_id=$this->db->insert_id();    
-							echo "true";
-						}
-
-					}else if($do=='update'){
-						$id=$this->input->post('trace_id',true);  
-						//Check Duplicate Entry  
-						$this->db->where('tbl_id', $id);
-						$this->db->update('customer_services', $data);
-						$last_id=$this->db->insert_id();    
-						echo "true";
-
-
-					}
-
-				}
-				else{
-					//echo "All Field Must Required With Valid Length !";
-					echo validation_errors('<span class="ion-android-alert failedAlert2"> ','</span>');
-
-				}
-			}
-			else{
-				echo "Service Name Already Exist !";
-			}
-		}
-		else if($action=='update'){
-
-		}
-
-		else if($action=='remove'){
-			$this->input->get('');    
-			$this->db->delete('customer_services', array('tbl_id' => $param1));        
-		}
-
-	}
 
 	public function add_item($action='',$param1=''){
 		$data['items'] = $this->Adminmodel->get_item();
@@ -4163,7 +4384,6 @@ class Admin extends CI_Controller {
 	}
 
 	public function get_account_detail(){
-
 		$account_number = $this->input->post('account_number', true);
 		$account_detail = $this->Adminmodel->fetch_account_detail($account_number);
 		
@@ -4191,6 +4411,7 @@ class Admin extends CI_Controller {
 		}
 
 		$status=null;
+
 		if(!empty($this->input->post('account_status'))){
                         $status = $this->input->post('account_status', true);
                 }else{
@@ -4246,6 +4467,7 @@ class Admin extends CI_Controller {
                 echo 1;
 
         }
+
 
 
 }

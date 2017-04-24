@@ -822,6 +822,7 @@ data : $(this).serialize(),
 beforeSend : function(){
 $(".block-ui").css('display','block'); 
 },success : function(data){ 
+try{
 var accnt_detail = JSON.parse(data);
 if(accnt_detail['error']=="false"){  
 sucessAlert("Account number:"+accnt_detail['accnt_no']); 
@@ -839,6 +840,11 @@ failedAlert2(accnt_detail['error_message']);
  window.scrollTo(0,1);
 $(".block-ui").css('display','none');
 }   
+}catch(err){
+	failedAlert2(data);
+ window.scrollTo(0,1);
+$(".block-ui").css('display','none');
+}
 }
 });    
 return false;

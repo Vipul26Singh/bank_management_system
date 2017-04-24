@@ -41,8 +41,8 @@
 <script src="<?php echo base_url() ?>/theme/js/jquery.js"></script>
 <script src='<?php echo base_url() ?>/theme/js/modernizr.js'></script>
     
-<!--<script src="<?php echo base_url() ?>/theme/js/pace.min.js"></script>
---><link href="<?php echo base_url() ?>/theme/css/pace-theme-minimal.css" rel="stylesheet" />
+<script src="<?php echo base_url() ?>/theme/js/pace.min.js"></script>
+<link href="<?php echo base_url() ?>/theme/css/pace-theme-minimal.css" rel="stylesheet" />
 
 
 </head>
@@ -371,11 +371,8 @@
 <a href="#"><i class="fa fa-credit-card"></i>
 <span class="title"><?php get_phrase('Service_and_item_management') ?></span></a>
 <ul class="collapse">
-     <li><a href="<?php echo site_url('Admin/service_management') ?>"><i class="fa fa-users"></i> <?php get_phrase('service_management') ?></a></li>
-     <li><a href="<?php echo site_url('Admin/item_management') ?>"><i class="fa fa-users"></i> <?php get_phrase('item_management') ?></a></li>
-       <li><a href="<?php echo site_url('Admin/customerServices') ?>"><i class="fa fa-database"></i> <?php get_phrase('customer_Services') ?></a></li>
-       <li><a href="<?php echo site_url('Admin/add_item') ?>"><i class="fa fa-database"></i> <?php get_phrase('add_item') ?></a></li>
-        <li><a href="<?php echo site_url('Admin/withdrawAll') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('withdraw_service_charges') ?></a></li>
+        <li><a href="<?php echo site_url('Admin/assignService') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('assign_item_service') ?></a></li>
+	<li><a href="<?php echo site_url('Admin/manageAccountService') ?>"><i class="fa fa-calculator"></i> <?php get_phrase('manage_account_service') ?></a></li>
 </ul>
 </li>
 <!-- 

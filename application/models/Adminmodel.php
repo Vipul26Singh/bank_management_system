@@ -794,15 +794,6 @@ class AdminModel extends CI_Model{
 		return $result;
 	}
 
-	public function get_services(){
-
-		$this->db->select('tbl_id, service_name, service_amount, 0 as checked');
-		$this->db->from('customer_services');
-		$this->db->order_by('tbl_id','desc');
-		$query_result=$this->db->get();
-		$result=$query_result->result();
-		return $result;
-	}
 	public function get_service_by_id($id){
 		$this->db->select('*');
 		$this->db->from('customer_services');
@@ -991,7 +982,7 @@ public function get_current_emi($customer_id,$loan_id=''){
 		return null;
 	}
 
-	public function fetch_account_view_detail($account_number=null, $account_type_id=null, $status=null, $member_id=null){
+	public function fetch_account_view_detail($account_number=null, $account_type_id=null, $status=null, $member_id=null, $account_number_like=null, $member_name_like=null){
                 $this->db->select('*');
                 $this->db->from('bank_accounts');
 
@@ -1005,6 +996,14 @@ public function get_current_emi($customer_id,$loan_id=''){
 
                 if(!empty($status) || $status == '0'){
                         $this->db->where('bank_accounts.status', $status);
+                }
+
+		if(!empty($account_number_like) || $account_number_like==='0'){
+                        $this->db->like('bank_accounts.bank_account_number', $account_number_like);
+                }
+
+		if(!empty($member_name_like) || $member_name_like==='0'){
+                        $this->db->like('member_details.member_name', $member_name_like);
                 }
 
 		$this->db->join('bank_account_types', 'bank_account_types.tbl_id = bank_accounts.bank_account_id');
@@ -1432,7 +1431,7 @@ public function get_current_emi($customer_id,$loan_id=''){
                 return "success";
         }
 
-	public function getLoanAccountDetail($accnt_no, $status=null){
+	public function getFdAccountDetail($accnt_no, $status=null){
 		$this->db->select('*');
 		$this->db->from('bank_accounts');
 		$this->db->join('bank_account_types', 'bank_accounts.bank_account_id = bank_account_types.tbl_id');
@@ -1456,5 +1455,383 @@ public function get_current_emi($customer_id,$loan_id=''){
 		}
 	}
 
+	public function get_services($status=null, $get_array = null){
+
+                $this->db->select('*');
+                $this->db->from('bank_service_setup');
+
+		if($status!=null){
+			$this->db->where('status', $status);
+		}		
+                $this->db->order_by('id','desc');
+		
+
+                $query_result=$this->db->get();
+		
+		if($get_array!=null){
+			$result=$query_result->result_array();
+		}else{
+                	$result=$query_result->result();
+                }
+		return $result;
+        }
+
+	public function getRemainingServiceCharge($accountId=null){
+
+                $this->db->select('*');
+                $this->db->from('bank_account_service_charge_summary');
+
+                if($accountId!=null){
+                        $this->db->where('account_id', $accountId);
+                }
+
+
+                $query_result=$this->db->get();
+                $result=$query_result->result_array();
+
+		
+		if(empty($result))
+                	return $result;
+		else
+			return $result[0];
+        }
+
+	public function getAccountService($account_id=null, $service_id=null, $status=null){
+		$this->db->select('*');
+                $this->db->from('bank_account_service');
+
+		if($account_id!=null)
+		$this->db->where('account_id', $account_id);
 	
+		if($service_id!=null)
+		$this->db->where('service_id', $service_id);
+		
+		if($status!=null)
+		$this->db->where('status', $status);
+
+
+		$query_result=$this->db->get();
+                $result=$query_result->result_array();
+
+
+                return $result;
+
+	}
+
+	public function getAccountDetail($accountId, $table_name, $status=null, $account_number=null){
+
+		 $this->db->select('*');
+                $this->db->from('bank_accounts');
+                $this->db->join('bank_account_types', 'bank_accounts.bank_account_id = bank_account_types.tbl_id');
+                $this->db->join($table_name, $table_name.'.account_id = bank_accounts.id');
+                $this->db->join('bank_member_account', 'bank_member_account.account_id = bank_accounts.id');
+                $this->db->join('member_details', 'bank_member_account.member_id = member_details.member_id');
+
+		if($accountId!=null){
+               	 	$this->db->where('bank_accounts.id', $accountId);
+		}
+
+		if($account_number!=null){
+			$this->db->where('bank_accounts.bank_account_number', $account_number);
+		}
+	
+		if($status!=null){
+			$this->db->where('bank_accounts.status', $status);
+		}
+
+
+
+
+                $result = $this->db->get();
+
+
+
+                $return = $result->result_array();
+                if(empty($return)){
+                        return null;
+                }else{
+                        return $return[0];
+                }
+
+        }
+
+	public function deduct_saving_service($account_id, $charge, $modify_service_summary=null){
+
+                $account_detail = $this->getAccountDetail($account_id, 'bank_account_saving');
+
+		if(empty($account_detail)){
+                        return get_phrase("invalid_account_number", true);
+                }
+
+                if($account_detail['balance']-$charge < 0){
+                        return get_phrase("insufficient_balance", true);
+                }
+
+
+               $this->db->set('balance', $account_detail['balance']-$charge)->where('account_id', $account_id)->update('bank_account_saving');
+
+                $this->logFundTrasaction($account_detail['bank_account_number'], $account_detail['member_id'], $account_detail['account_id'], $account_detail['html_id'], $account_detail['bank_account_id'], DEBIT, $charge, null, $account_detail['balance'], $account_detail['balance']-$charge, SERVICE_CHARGE_REMARKS, null, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+        
+                if(!empty($modify_service_summary)){
+
+                        $this->db->set('remaining_charge', 'remaining_charge-'.$charge , FALSE)->where('account_id', $data['account_id'])->update('bank_account_service_charge_summary');
+                }      
+                return "true";
+        }
+
+	public function deduct_current_service($account_id, $charge, $modify_service_summary=null){
+
+                $account_detail = $this->getAccountDetail($account_id, 'bank_account_current');
+
+                if(empty($account_detail)){
+                        return get_phrase("invalid_account_number", true);
+                }
+
+		if($account_detail['balance']-$charge < 0){
+                        return get_phrase("insufficient_balance", true);
+                }
+
+                $this->db->set('balance', $account_detail['balance']-$charge)->where('account_id', $account_id)->update('bank_account_current');
+
+                $this->logFundTrasaction($account_detail['bank_account_number'], $account_detail['member_id'], $account_detail['account_id'], $account_detail['html_id'], $account_detail['bank_account_id'], DEBIT, $charge, null, $account_detail['balance'], $account_detail['balance']-$charge, SERVICE_CHARGE_REMARKS, null, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+
+                if(!empty($modify_service_summary)){
+
+                        $this->db->set('remaining_charge', 'remaining_charge+'.$charge , FALSE)->where('account_id', $data['account_id'])->update('bank_account_service_charge_summary');
+                }
+                return "true";
+        }
+
+	public function deduct_loan_service($account_id, $charge, $modify_service_summary=null){
+
+		$account_detail = $this->getAccountDetail($account_id, 'bank_account_loan');
+
+
+                if(empty($account_detail)){
+                        return get_phrase("invalid_account_number", true);
+                }
+
+
+
+                $this->logFundTrasaction($account_detail['bank_account_number'], $account_detail['member_id'], $account_detail['account_id'], $account_detail['html_id'], $account_detail['bank_account_id'], DEBIT, $charge, null, $account_detail['payable_amount'], $account_detail['payable_amount']+$charge, SERVICE_CHARGE_REMARKS, null, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+
+                if(!empty($modify_service_summary)){
+
+                        $this->db->set('remaining_charge', 'remaining_charge+'.$charge , FALSE)->where('account_id', $data['account_id'])->update('bank_account_service_charge_summary');
+                }
+                return "true";
+        }
+
+	 public function deduct_fd_service($account_id, $charge, $modify_service_summary=null){
+
+		$account_detail = $this->getAccountDetail($account_id, 'bank_account_fd');
+
+
+                if(empty($account_detail)){
+                        return get_phrase("invalid_account_number", true);
+                }
+
+
+
+                $this->logFundTrasaction($account_detail['bank_account_number'], $account_detail['member_id'], $account_detail['account_id'], $account_detail['html_id'], $account_detail['bank_account_id'], DEBIT, $charge, null, $account_detail['maturity_amount'], $account_detail['maturity_amount']-$charge, SERVICE_CHARGE_REMARKS, null, TRANSACTION_MODE_TRANSFER, null, null, null, null);
+
+
+
+                if(!empty($modify_service_summary)){
+
+                        $this->db->set('remaining_charge', 'remaining_charge+'.$charge , FALSE)->where('account_id', $data['account_id'])->update('bank_account_service_charge_summary');
+                }
+                return "true";
+        }
+
+	public function fetch_service_charge($account_id){
+		return $this->db->select('*')->from('bank_account_service_charge_summary')->where('account_id', $account_id)->get()->result_array();
+	}
+
+	public function get_account_service_detail($account_id=null, $account_number=null, $service_id =null, $service_status = null, $account_status=null, $service_name_like = null, $account_number_like=null, $member_name_like=null){
+		$this->db->select('*');
+		$this->db->from('bank_accounts');
+		$this->db->join('bank_member_account', 'bank_member_account.account_id=bank_accounts.id');
+		$this->db->join('member_details', 'member_details.member_id=bank_member_account.member_id');
+		$this->db->join('bank_account_types', 'bank_account_types.tbl_id=bank_accounts.bank_account_id');
+		$this->db->join('bank_account_service', 'bank_account_service.account_id=bank_accounts.id');
+		$this->db->join('bank_service_setup', 'bank_account_service.service_id=bank_service_setup.id');
+
+		if(!empty($account_id) || $account_id==='0'){
+			$this->db->where('bank_accounts.id', $account_id);
+		}
+
+		if(!empty($account_number) || $account_number==='0'){
+			$this->db->where('bank_accounts.bank_account_number', $account_number);
+		}
+
+		if(!empty($account_status) || $account_status==='0'){
+                        $this->db->where('bank_accounts.status', $account_status);
+                }
+
+		if(!empty($service_status) || $service_status==='0'){
+                        $this->db->where('bank_account_service.status', $service_status);
+                }
+
+		$this->db->where('bank_service_setup.status', '1');
+
+		if(!empty($service_id) || $service_id==='0'){
+                        $this->db->where('bank_service_setup.id', $service_id);
+                }
+
+		if(!empty($service_name_like) || $service_name_like==='0'){
+                        $this->db->like('bank_service_setup.name', $service_name_like);
+                }
+
+		if(!empty($account_number_like) || $account_number_like==='0'){
+                        $this->db->like('bank_accounts.bank_account_number', $account_number_like);
+                }
+
+		if(!empty($member_name_like) || $member_name_like==='0'){
+                        $this->db->like('member_details.member_name', $member_name_like);
+                }
+
+		$this->db->order_by("application_date");
+
+
+		$result = $this->db->get();
+
+		return $result->result_array();
+	}
+
+	public function deactivate_service($accnt_id, $service_id=null){
+		$data = array();
+                        $data['status'] = 0;
+                        $this->db->where('account_id', $accnt_id);
+			if($service_id!=null)
+                        $this->db->where('service_id', $service_id);
+                        $this->db->update('bank_account_service', $data);
+
+	}
+
+	public function generate_loan_installments($account_id, $billing_date, $pay_by_days, $emi, $total_installment){
+		$data=array();
+                $data['account_id'] = $account_id;	
+		$data['emi'] = $emi;
+		$data['is_payed'] = 0;
+		$var = 0;
+
+		for($i =0 ; $i < $total_installment; $i++){
+			$var++;
+			$data['billing_date'] = date('Y', strtotime("+".$var." month"))."-".date("m", strtotime("+".$var ." month"))."-".$billing_date;
+			$data['due_date'] = date('Y-m-d', strtotime("+".$pay_by_days ." day", strtotime($data['billing_date'])));		
+
+			$this->db->insert('loan_installment_detail', $data);
+		}	
+
+		return $data['due_date'];
+	}
+
+	public function payLoanInstallment($account_id, $amount_payed){
+		$per_day_late_fee = $this->Adminmodel->get_general_detail('accnt_gen', 'default_late_fee'); 
+		$today = Date('Y-m-d');
+                $this->db->select('*');
+                $this->db->from('loan_installment_detail');
+                $this->db->where('account_id', $account_id);
+                $this->db->where('is_payed', '0');
+                $this->db->where('billing_date<=', $today);
+
+                $sql_result = $this->db->get()->result_array();
+
+                foreach($sql_result as $result){
+
+			if($amount_payed<=0){
+				break;
+			}
+
+			$late_fee = null;
+			$update_data = null;
+                        if($result['due_date'] < $today){
+                                $diff_day = floor(strtotime($today)-strtotime($result['due_date']))/86400;
+				$late_fee = $per_day_late_fee*$diff_day;
+                        }
+
+			if(!empty($late_Fee)){
+				if($amount_payed >= $late_fee){
+					$update_data['late_fee'] = $late_fee;	
+					$amount_payed-=$late_fee;
+				}else{
+					$update_data['late_fee'] = $amount_payed;
+                                        $amount_payed = 0;		
+				}
+			}
+
+			$installment_amount = null;
+			if(empty($result['payed_amount'])){
+				$result['payed_amount'] = 0;	
+			}
+
+			if($amount_payed >= $result['emi']){
+				$update_data['payed_amount'] += $result['emi'];
+				$amount_payed-=$result['emi']; 
+				$update_data['is_payed'] = '1';
+			}else{
+				$update_data['payed_amount'] += $amount_payed;
+                                $amount_payed = 0;
+				$update_data['is_payed'] = '0';
+			}
+
+			$update_data['payment_date'] = Date('Y-m-d');
+
+			$this->db->update('loan_installment_detail', $update_data);
+
+                }
+
+		return "success";
+	}
+
+	public function fetch_loan_account_summary($account_id){
+		$per_day_late_fee = $this->Adminmodel->get_general_detail('accnt_gen', 'default_late_fee'); 
+		$today = Date('Y-m-d');
+		$return = array();
+		$return['total_late_fee'] = 0;
+		$return['total_due_amount'] = 0;
+		$return['last_payment_date'] = null;
+		$this->db->select('*');
+		$this->db->from('loan_installment_detail');
+		$this->db->where('account_id', $account_id);
+		$this->db->where('is_payed', '0');
+		$this->db->where('billing_date<=', $today);
+
+		$sql_result = $this->db->get()->result_array();
+
+		foreach($sql_result as $result){
+			if($result['due_date'] < $today){
+				$diff_day = floor(strtotime($today)-strtotime($result['due_date']))/86400;
+
+				if($diff_day>0){
+					$return['total_late_fee'] += $diff_day*$per_day_late_fee;
+					$return['total_due_amount'] += ($diff_day*$per_day_late_fee)+$result['emi'];
+				}
+			}else{
+                                $return['total_due_amount'] += $result['emi'];	
+			}
+
+			if(!empty($result['payed_amount'])){
+				$return['total_due_amount'] -=$result['payed_amount'];
+			}
+		}
+
+
+		$this->db->select('max(payment_date) as payment_date');
+                $this->db->from('loan_installment_detail');
+                $this->db->where('account_id', $account_id);
+                $this->db->where('is_payed', '1');
+
+		$payment_result = $this->db->get()->result_array();
+
+
+		if(!empty($payment_result)){
+			$return['last_payment_date'] = $payment_result[0]['payment_date'];
+		}
+            
+		return $return; 
+		
+	}
+
 }
